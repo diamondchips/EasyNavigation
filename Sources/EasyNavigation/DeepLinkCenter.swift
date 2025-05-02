@@ -17,7 +17,7 @@ public actor DeepLinkCenter<ViewDestination: ViewDestinationRepresentable> {
     }
 
     /// Call from AppDelegate / notification delegate / openURL
-    public func enqueue(_ link: URL) {
+    public func enqueue(_ link: URL) async {
         guard let destination = ViewDestination(from: link) else { return }
         pending.append(destination)
         tryDeliver()
