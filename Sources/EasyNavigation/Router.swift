@@ -29,12 +29,14 @@ public class Router: @unchecked Sendable {
     }
     
     private func syncState() async {
-        _ = withAnimation {
-            Task {
-                navigationPath = await actor.getPath()
-                fullScreenDestination = await actor.getFullScreenDestination()
-                sheetDestination = await actor.getSheetDestination()
-            }
+        let path = await actor.getPath()
+        let fullScreen = await actor.getFullScreenDestination()
+        let sheet = await actor.getSheetDestination()
+        
+        withAnimation {
+            navigationPath = path
+            fullScreenDestination = fullScreen
+            sheetDestination = sheet
         }
     }
     
@@ -50,17 +52,44 @@ public class Router: @unchecked Sendable {
     public func pushAndRemoveSelf<Content: View>(@ViewBuilder _ destination: () -> Content) {
         let wrapper = DestinationWrapper(destination: AnyView(destination()))
         Task { @MainActor in
-            // 1) Animasyonsuz olarak mevcut ekranı hem aktörden hem navPath'ten kaldır
-            await actor.pushAndRemoveSelf(wrapper)
-            await syncState()
+            // First get current path
+            var currentPath = await actor.getPath()
+            if !currentPath.isEmpty {
+                currentPath.removeLast()
+                currentPath.append(wrapper)
+                
+                // Update actor
+                await actor.setPath(currentPath)
+                
+                // Apply animation explicitly
+                withAnimation(.easeInOut) {
+                    navigationPath = currentPath
+                }
+                
+                // Sync other states
+                fullScreenDestination = await actor.getFullScreenDestination()
+                sheetDestination = await actor.getSheetDestination()
+            }
         }
     }
     
     public func pushAndRemoveAll<Content: View>(@ViewBuilder _ destination: () -> Content) {
         let wrapper = DestinationWrapper(destination: AnyView(destination()))
         Task { @MainActor in
-            await actor.pushAndRemoveAll(wrapper)
-            await syncState()
+            // Create a new path with just the destination
+            let newPath = [wrapper]
+            
+            // Update actor
+            await actor.setPath(newPath)
+            
+            // Apply animation explicitly
+            withAnimation(.easeInOut) {
+                navigationPath = newPath
+            }
+            
+            // Sync other states
+            fullScreenDestination = await actor.getFullScreenDestination()
+            sheetDestination = await actor.getSheetDestination()
         }
     }
     

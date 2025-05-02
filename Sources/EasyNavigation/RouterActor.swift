@@ -24,16 +24,21 @@ actor RouterActor: Sendable {
     func getFullScreenDestination() async -> DestinationWrapper? { fullScreen }
     func getSheetDestination() async -> DestinationWrapper? { sheet }
     
+    // MARK: - Setters
+    func setPath(_ newPath: [DestinationWrapper]) async {
+        path = newPath
+    }
+    
     // MARK: - Navigation Mutators
     func push(_ wrapper: DestinationWrapper) async {
         path.append(wrapper)
     }
     
     func pushAndRemoveSelf(_ wrapper: DestinationWrapper) async {
-        if !path.isEmpty { path.removeLast() }
-        withAnimation {
-            path.append(wrapper)
+        if !path.isEmpty { 
+            path.removeLast() 
         }
+        path.append(wrapper)
     }
     
     func pushAndRemoveAll(_ wrapper: DestinationWrapper) async {
