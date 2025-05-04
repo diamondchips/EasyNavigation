@@ -10,33 +10,39 @@ import SwiftUI
 public struct ViewNavigationWrapper: View {
     @State private var router: Router
     @Environment(RouterStack.self) private var routerStack
-
+    
     public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
         let any = AnyView(content())
         router = Router(parent: parent, rootDestination: any)
     }
-
+    
     public var body: some View {
-        NavigationStack(path: $router.navigationPath) {
+        NavigationStack(path: $router.path) {
             EmptyView()
                 .navigationDestination(for: DestinationWrapper.self) { wrapper in
-                    wrapper.destination
-                        .environment(router)
-                        .environment(getNavigationInformation(isPushed: router.navigationPath.first?.id != wrapper.id))
+                    wrapper
+                        .destination
                         .toolbar(.hidden, for: .navigationBar)
+                        .environment(router)
+                        .environment(createNavigationInformation(isPushed: router.path.first?.id != wrapper.id))
                 }
-                .environment(router)
         }
-        .fullScreenCover(item: $router.fullScreenDestination) { wrapper in
+        .fullScreenCover(item: $router.fullScreenDestination, onDismiss: {
+            router.fullScreenDestination = nil
+        }) { wrapper in
             ViewNavigationWrapper(parent: router) {
                 wrapper.destination
             }
+            .environment(createNavigationInformation(isPushed: false))
             .toolbar(.hidden, for: .navigationBar)
         }
-        .sheet(item: $router.sheetDestination) { wrapper in
+        .sheet(item: $router.sheetDestination, onDismiss: {
+            router.sheetDestination = nil
+        }) { wrapper in
             ViewNavigationWrapper(parent: router) {
                 wrapper.destination
             }
+            .environment(createNavigationInformation(isPushed: false))
             .toolbar(.hidden, for: .navigationBar)
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -44,10 +50,10 @@ public struct ViewNavigationWrapper: View {
         .onDisappear { routerStack.pop(router) }
     }
     
-    private func getNavigationInformation(isPushed: Bool) -> NavigationInformations {
-        NavigationInformations(
+    private func createNavigationInformation(isPushed: Bool) -> NavigationInformations {
+        return NavigationInformations(
             isPushed: isPushed,
-            isPresented: router.parent?.fullScreenDestination != nil || router.parent?.sheetDestination != nil,
+            isPresenting: router.parent != nil,
             navigationType: router.parent == nil ? .root : router.parent?.fullScreenDestination != nil ? .present : .sheet
         )
     }

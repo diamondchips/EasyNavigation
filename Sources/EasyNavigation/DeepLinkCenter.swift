@@ -29,15 +29,21 @@ public actor DeepLinkCenter<ViewDestination: ViewDestinationRepresentable> {
         if let router = routerStack.topMostRouter,
            let link   = pending.first
         {
-            pending.removeFirst()
-            route(link, on: router)
-            tryDeliver()
+            Task {
+                pending.removeFirst()
+                await route(link, on: router)
+                tryDeliver()
+            }
         }
     }
 
-    private func route(_ destination: ViewDestination, on router: Router) {
-        router.push {
-            destination.view
+    @MainActor
+    private func route(_ destination: ViewDestination, on router: Router) async {
+        let view = destination.view
+        Task { @MainActor in
+            router.present {
+                view
+            }
         }
     }
 }

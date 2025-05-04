@@ -7,103 +7,69 @@
 
 import SwiftUI
 
+@MainActor
 @Observable
 public class Router: @unchecked Sendable {
-    var navigationPath: [DestinationWrapper] = []
+    var path: [DestinationWrapper] = []
     var fullScreenDestination: DestinationWrapper?
     var sheetDestination: DestinationWrapper?
-    
-    @ObservationIgnored
-    private let actor: RouterActor
     
     @ObservationIgnored
     weak var parent: Router?
     
     public init(parent: Router? = nil, rootDestination: AnyView) {
         self.parent = parent
-        let parentActor = parent?.actor
-        let rootWrapper = DestinationWrapper(destination: rootDestination)
-        self.actor = RouterActor(parent: parentActor, root: rootWrapper)
-        navigationPath = [rootWrapper]
-        Task { @MainActor in await syncState() }
-    }
-    
-    private func syncState() async {
-        let path = await actor.getPath()
-        let fullScreen = await actor.getFullScreenDestination()
-        let sheet = await actor.getSheetDestination()
-        
-        withAnimation {
-            navigationPath = path
-            fullScreenDestination = fullScreen
-            sheetDestination = sheet
-        }
+        let wrapper = DestinationWrapper(destination: rootDestination)
+        path = [wrapper]
     }
     
     // MARK: - Navigation API
     public func push<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+        let wrapper = DestinationWrapper(
+            destination: AnyView(destination())
+        )
         Task { @MainActor in
-            await actor.push(wrapper)
-            await syncState()
+            path.append(wrapper)
         }
     }
     
-    public func pushAndRemoveSelf<Content: View>(@ViewBuilder _ destination: () -> Content) {
+    public func pushAndRemoveSelf<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
         let wrapper = DestinationWrapper(destination: AnyView(destination()))
         Task { @MainActor in
             // First get current path
-            var currentPath = await actor.getPath()
+            var currentPath =  path
             if !currentPath.isEmpty {
                 currentPath.removeLast()
                 currentPath.append(wrapper)
-                
-                // Update actor
-                await actor.setPath(currentPath)
-                
-                // Apply animation explicitly
                 withAnimation(.easeInOut) {
-                    navigationPath = currentPath
+                    path = currentPath
                 }
-                
-                // Sync other states
-                fullScreenDestination = await actor.getFullScreenDestination()
-                sheetDestination = await actor.getSheetDestination()
             }
         }
     }
     
-    public func pushAndRemoveAll<Content: View>(@ViewBuilder _ destination: () -> Content) {
+    public func pushAndRemoveAll<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
         let wrapper = DestinationWrapper(destination: AnyView(destination()))
         Task { @MainActor in
-            // Create a new path with just the destination
+            
             let newPath = [wrapper]
-            
-            // Update actor
-            await actor.setPath(newPath)
-            
-            // Apply animation explicitly
             withAnimation(.easeInOut) {
-                navigationPath = newPath
+                path = newPath
             }
-            
-            // Sync other states
-            fullScreenDestination = await actor.getFullScreenDestination()
-            sheetDestination = await actor.getSheetDestination()
         }
     }
     
     public func pop() {
         Task { @MainActor in
-            await actor.pop()
-            await syncState()
+            if path.count > 1 {
+                path.removeLast()
+            }
         }
     }
     
     public func popToRoot() {
         Task { @MainActor in
-            await actor.popToRoot()
-            await syncState()
+            path.removeAll()
         }
     }
     
@@ -111,39 +77,49 @@ public class Router: @unchecked Sendable {
     public func present<Content: View>(@ViewBuilder _ destination: () -> Content) {
         let wrapper = DestinationWrapper(destination: AnyView(destination()))
         Task { @MainActor in
-            // clear sheet before presenting fullScreen
-            await actor.clearSheet()
-            await actor.present(wrapper)
-            await syncState()
+            sheetDestination = nil
+            fullScreenDestination = wrapper
         }
     }
     
-    public func sheet<Content: View>(@ViewBuilder _ destination: () -> Content) {
+    public func sheet<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
         let wrapper = DestinationWrapper(destination: AnyView(destination()))
         Task { @MainActor in
-            // clear fullScreen before presenting sheet
-            await actor.clearFullScreen()
-            await actor.sheet(wrapper)
-            await syncState()
+            fullScreenDestination = nil
+            sheetDestination = wrapper
         }
     }
     
     public func dismiss() {
         Task { @MainActor in
-            await actor.dismiss()
-            await syncState()
-            if let parent {
-                await parent.syncState()
+            if parent?.sheetDestination != nil {
+                parent?.sheetDestination = nil
+                return
+            }
+            if parent?.fullScreenDestination != nil {
+                parent?.fullScreenDestination = nil
+                return
             }
         }
     }
     
     public func dismissToRoot() {
+        
         Task { @MainActor in
-            await actor.dismissToRoot()
-            await syncState()
-            if let parent {
-                await parent.syncState()
+            sheetDestination = nil
+            fullScreenDestination = nil
+            if let parent = parent {
+                parent.dismissToRoot()
+            }
+        }
+    }
+    
+    public func dismissPresented() {
+        Task { @MainActor in
+            if sheetDestination != nil {
+                sheetDestination = nil
+            } else if fullScreenDestination != nil {
+                fullScreenDestination = nil
             }
         }
     }
