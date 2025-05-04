@@ -16,12 +16,12 @@ open class NavigationInformations {
     
     init(
         isPushed: Bool,
-        isPresented: Bool,
+        isPresenting: Bool,
         navigationType: NavigationType
     ) {
         self.isPushed = isPushed
         self.navigationType = navigationType
-        self.isPresented = isPresented
+        self.isPresented = isPresenting
         id = UUID().uuidString
     }
     

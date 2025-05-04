@@ -7,89 +7,120 @@
 
 import SwiftUI
 
+@MainActor
 @Observable
-open class Router {
+public class Router: @unchecked Sendable {
+    var path: [DestinationWrapper] = []
     var fullScreenDestination: DestinationWrapper?
     var sheetDestination: DestinationWrapper?
-    var navigationPath = [DestinationWrapper]()
     
     @ObservationIgnored
-    let parent: Router?
+    weak var parent: Router?
     
-    init(parent: Router? = nil, rootDestination: AnyView) {
+    public init(parent: Router? = nil, rootDestination: AnyView) {
         self.parent = parent
-        navigationPath.append(DestinationWrapper(destination: rootDestination))
+        let wrapper = DestinationWrapper(destination: rootDestination)
+        path = [wrapper]
     }
     
+    // MARK: - Navigation API
     public func push<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        navigationPath.append(
-            DestinationWrapper(
-                destination: AnyView(destination())
-            )
-        )
-    }
-    
-    public func pushAndRemoveSelf<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        var paths = navigationPath
-        paths.removeLast()
-        paths.append(DestinationWrapper(
+        let wrapper = DestinationWrapper(
             destination: AnyView(destination())
-        ))
-        
-        navigationPath = paths
+        )
+        Task { @MainActor in
+            path.append(wrapper)
+        }
     }
     
-    public func pushAndRemoveAll<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        navigationPath = [
-            DestinationWrapper(
-                destination: AnyView(destination())
-            )
-        ]
+    public func pushAndRemoveSelf<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
+        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+        Task { @MainActor in
+            // First get current path
+            var currentPath =  path
+            if !currentPath.isEmpty {
+                currentPath.removeLast()
+                currentPath.append(wrapper)
+                withAnimation(.easeInOut) {
+                    path = currentPath
+                }
+            }
+        }
+    }
+    
+    public func pushAndRemoveAll<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
+        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+        Task { @MainActor in
+            
+            let newPath = [wrapper]
+            withAnimation(.easeInOut) {
+                path = newPath
+            }
+        }
     }
     
     public func pop() {
-        if !navigationPath.isEmpty {
-            navigationPath.removeLast()
+        Task { @MainActor in
+            if path.count > 1 {
+                path.removeLast()
+            }
         }
     }
     
     public func popToRoot() {
-        pop()
-        if navigationPath.isEmpty { return }
-        popToRoot()
+        Task { @MainActor in
+            path.removeAll()
+        }
     }
     
+    // MARK: - Sheets & Covers
     public func present<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        fullScreenDestination = DestinationWrapper(
-            destination: AnyView(destination())
-        )
+        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+        Task { @MainActor in
+            sheetDestination = nil
+            fullScreenDestination = wrapper
+        }
     }
     
-    public func sheet<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        sheetDestination = DestinationWrapper(
-            destination: AnyView(destination())
-        )
+    public func sheet<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
+        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+        Task { @MainActor in
+            fullScreenDestination = nil
+            sheetDestination = wrapper
+        }
     }
     
     public func dismiss() {
-        if let parent {
-            if parent.sheetDestination != nil {
-                parent.sheetDestination = nil
-            } else if parent.fullScreenDestination != nil {
-                parent.fullScreenDestination = nil
+        Task { @MainActor in
+            if parent?.sheetDestination != nil {
+                parent?.sheetDestination = nil
+                return
+            }
+            if parent?.fullScreenDestination != nil {
+                parent?.fullScreenDestination = nil
+                return
             }
         }
     }
     
     public func dismissToRoot() {
-        if let parent {
-            if parent.sheetDestination != nil {
-                parent.sheetDestination = nil
-            } else if parent.fullScreenDestination != nil {
-                parent.fullScreenDestination = nil
+        
+        Task { @MainActor in
+            sheetDestination = nil
+            fullScreenDestination = nil
+            if let parent = parent {
+                parent.dismissToRoot()
             }
-            
-            parent.popToRoot()
+        }
+    }
+    
+    public func dismissPresented() {
+        Task { @MainActor in
+            if sheetDestination != nil {
+                sheetDestination = nil
+            } else if fullScreenDestination != nil {
+                fullScreenDestination = nil
+            }
         }
     }
 }
