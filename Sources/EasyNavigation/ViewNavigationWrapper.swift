@@ -19,7 +19,8 @@ public struct ViewNavigationWrapper: View {
     
     public var body: some View {
         ViewBody(
-            router: router
+            router: router,
+            hasRoot: false
         ) {
             EmptyView()
         }
@@ -38,18 +39,11 @@ public struct TabViewNavigationWrapper: View {
     
     public var body: some View {
         ViewBody(
-            router: router
+            router: router,
+            hasRoot: true
         ) {
             content
         }
-    }
-    
-    private func createNavigationInformation(isPushed: Bool) -> NavigationInformations {
-        return NavigationInformations(
-            isPushed: isPushed,
-            isPresenting: router.parent != nil,
-            navigationType: router.parent == nil ? .root : router.parent?.fullScreenDestination != nil ? .present : .sheet
-        )
     }
 }
 
@@ -57,10 +51,12 @@ private struct ViewBody<Content: View>: View {
     @Environment(RouterStack.self) private var routerStack
     
     @Bindable var router: Router
+    let hasRoot: Bool
     let content: Content
     
-    init(router: Router, @ViewBuilder content: () -> Content) {
+    init(router: Router, hasRoot: Bool = false, @ViewBuilder content: () -> Content) {
         self.router = router
+        self.hasRoot = hasRoot
         self.content = content()
     }
     
@@ -72,7 +68,11 @@ private struct ViewBody<Content: View>: View {
                         .destination
                         .toolbar(.hidden, for: .navigationBar)
                         .environment(router)
-                        .environment(createNavigationInformation(isPushed: router.path.first?.id != wrapper.id))
+                        .environment(
+                            createNavigationInformation(
+                                isPushed: hasRoot ? true : router.path.first?.id != wrapper.id
+                            )
+                        )
                 }
                 .environment(router)
         }
