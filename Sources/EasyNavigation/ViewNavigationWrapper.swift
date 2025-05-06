@@ -74,6 +74,7 @@ private struct ViewBody<Content: View>: View {
                         .environment(router)
                         .environment(createNavigationInformation(isPushed: router.path.first?.id != wrapper.id))
                 }
+                .environment(router)
         }
         .fullScreenCover(item: $router.fullScreenDestination, onDismiss: {
             router.fullScreenDestination = nil
