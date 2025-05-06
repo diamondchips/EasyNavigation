@@ -13,12 +13,60 @@ public struct ViewNavigationWrapper: View {
     
     public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
         let any = AnyView(content())
-        router = Router(parent: parent, rootDestination: any)
+        router = Router(parent: parent)
+        router.path.append(DestinationWrapper(destination: any))
+    }
+    
+    public var body: some View {
+        ViewBody(
+            router: router
+        ) {
+            EmptyView()
+        }
+    }
+}
+
+public struct TabViewNavigationWrapper: View {
+    @State private var router: Router
+    @Environment(RouterStack.self) private var routerStack
+    let content: AnyView
+    
+    public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
+        router = Router(parent: parent)
+        self.content = AnyView(content())
+    }
+    
+    public var body: some View {
+        ViewBody(
+            router: router
+        ) {
+            content
+        }
+    }
+    
+    private func createNavigationInformation(isPushed: Bool) -> NavigationInformations {
+        return NavigationInformations(
+            isPushed: isPushed,
+            isPresenting: router.parent != nil,
+            navigationType: router.parent == nil ? .root : router.parent?.fullScreenDestination != nil ? .present : .sheet
+        )
+    }
+}
+
+private struct ViewBody<Content: View>: View {
+    @Environment(RouterStack.self) private var routerStack
+    
+    @Bindable var router: Router
+    let content: Content
+    
+    init(router: Router, @ViewBuilder content: () -> Content) {
+        self.router = router
+        self.content = content()
     }
     
     public var body: some View {
         NavigationStack(path: $router.path) {
-            EmptyView()
+            content
                 .navigationDestination(for: DestinationWrapper.self) { wrapper in
                     wrapper
                         .destination
@@ -58,3 +106,4 @@ public struct ViewNavigationWrapper: View {
         )
     }
 }
+

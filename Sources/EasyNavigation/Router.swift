@@ -17,10 +17,8 @@ public class Router: @unchecked Sendable {
     @ObservationIgnored
     weak var parent: Router?
     
-    public init(parent: Router? = nil, rootDestination: AnyView) {
+    public init(parent: Router? = nil) {
         self.parent = parent
-        let wrapper = DestinationWrapper(destination: rootDestination)
-        path = [wrapper]
     }
     
     // MARK: - Navigation API
