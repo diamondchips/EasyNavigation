@@ -13,7 +13,7 @@ public struct ViewNavigationWrapper: View {
     
     public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
         let any = AnyView(content())
-        router = Router(parent: parent)
+        router = Router(parent: parent, hasRoot: false)
         router.path.append(DestinationWrapper(destination: any))
     }
     
@@ -33,7 +33,7 @@ public struct TabViewNavigationWrapper: View {
     let content: AnyView
     
     public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
-        router = Router(parent: parent)
+        router = Router(parent: parent, hasRoot: true)
         self.content = AnyView(content())
     }
     

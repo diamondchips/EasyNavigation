@@ -16,9 +16,12 @@ public class Router: @unchecked Sendable {
     
     @ObservationIgnored
     weak var parent: Router?
+    @ObservationIgnored
+    let hasRoot: Bool
     
-    public init(parent: Router? = nil) {
+    public init(parent: Router? = nil, hasRoot: Bool) {
         self.parent = parent
+        self.hasRoot = hasRoot
     }
     
     // MARK: - Navigation API
@@ -59,7 +62,7 @@ public class Router: @unchecked Sendable {
     
     public func pop() {
         Task { @MainActor in
-            if path.count > 1 {
+            if path.count > 1 || hasRoot {
                 path.removeLast()
             }
         }
@@ -102,7 +105,6 @@ public class Router: @unchecked Sendable {
     }
     
     public func dismissToRoot() {
-        
         Task { @MainActor in
             sheetDestination = nil
             fullScreenDestination = nil
