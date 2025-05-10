@@ -8,73 +8,32 @@
 import SwiftUI
 
 public struct ViewNavigationWrapper: View {
-    @State private var router: Router
-    @Environment(RouterStack.self) private var routerStack
-    
-    public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
-        let any = AnyView(content())
-        router = Router(parent: parent, hasRoot: false)
-        router.path.append(DestinationWrapper(destination: any))
-    }
-    
-    public var body: some View {
-        ViewBody(
-            router: router,
-            hasRoot: false
-        ) {
-            EmptyView()
-        }
-    }
-}
-
-public struct TabViewNavigationWrapper: View {
-    @State private var router: Router
-    @Environment(RouterStack.self) private var routerStack
-    let content: AnyView
-    
-    public init<Content: View>(parent: Router? = nil, @ViewBuilder content: () -> Content) {
-        router = Router(parent: parent, hasRoot: true)
-        self.content = AnyView(content())
-    }
-    
-    public var body: some View {
-        ViewBody(
-            router: router,
-            hasRoot: true
-        ) {
-            content
-        }
-    }
-}
-
-private struct ViewBody<Content: View>: View {
     @Environment(RouterStack.self) private var routerStack
     
     @Bindable var router: Router
-    let hasRoot: Bool
-    let content: Content
     
-    init(router: Router, hasRoot: Bool = false, @ViewBuilder content: () -> Content) {
-        self.router = router
-        self.hasRoot = hasRoot
-        self.content = content()
+    public init<Content: View>(parent: Router? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.router = Router(parent: parent, root: content)
     }
     
     public var body: some View {
         NavigationStack(path: $router.path) {
-            content
+            router.root()
+                .environment(createNavigationInformation(isPushed: false))
                 .navigationDestination(for: DestinationWrapper.self) { wrapper in
                     wrapper
                         .destination
+                        .id(wrapper.id)
                         .toolbar(.hidden, for: .navigationBar)
                         .environment(router)
                         .environment(
                             createNavigationInformation(
-                                isPushed: hasRoot ? true : router.path.first?.id != wrapper.id
+                                isPushed: !wrapper.isTransitioningToRoot
                             )
                         )
                 }
                 .environment(router)
+                .toolbar(.hidden, for: .navigationBar)
         }
         .fullScreenCover(item: $router.fullScreenDestination, onDismiss: {
             router.fullScreenDestination = nil
@@ -95,8 +54,14 @@ private struct ViewBody<Content: View>: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear { routerStack.push(router) }
-        .onDisappear { routerStack.pop(router) }
+        .onAppear {
+            routerStack.push(router)
+        }
+        .onDisappear {
+            router.fullScreenDestination = nil
+            router.sheetDestination = nil
+            routerStack.pop(router)
+        }
     }
     
     private func createNavigationInformation(isPushed: Bool) -> NavigationInformations {
@@ -107,4 +72,3 @@ private struct ViewBody<Content: View>: View {
         )
     }
 }
-
