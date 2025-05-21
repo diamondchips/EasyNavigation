@@ -10,7 +10,7 @@ import SwiftUI
 public struct ViewNavigationWrapper: View {
     @Environment(RouterStack.self) private var routerStack
     
-    @Bindable var router: Router
+    @State var router: Router
     
     public init<Content: View>(parent: Router? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.router = Router(parent: parent, root: content)
@@ -19,6 +19,7 @@ public struct ViewNavigationWrapper: View {
     public var body: some View {
         NavigationStack(path: $router.path) {
             router.root()
+                .id(router.rootViewID)
                 .environment(createNavigationInformation(isPushed: false))
                 .navigationDestination(for: DestinationWrapper.self) { wrapper in
                     wrapper

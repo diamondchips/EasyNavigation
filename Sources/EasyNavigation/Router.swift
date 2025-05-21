@@ -80,13 +80,13 @@ public class Router: @unchecked Sendable {
     }
     
     // MARK: - Navigation API
-    public func push<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        let wrapper = DestinationWrapper(
-            destination: AnyView(destination())
-        )
-        
+    public func push<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
+//        print(wrapper.id)
         executeOperation { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
+            let wrapper = DestinationWrapper(
+                destination: AnyView(destination())
+            )
             path.append(wrapper)
         }
     }
