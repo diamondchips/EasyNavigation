@@ -130,16 +130,14 @@ private struct NavigationStressTest: View {
         isRunning = true
         depth = 0 // Reset when starting
         timerTask = Task { @MainActor in
-            do {
-                while !Task.isCancelled && isRunning {
-                    if depth < maxDepth {
-                        pushView()
-                    } else {
-                        stopTest()
-                        depth = 0
-                    }
+            while !Task.isCancelled && isRunning {
+                if depth < maxDepth {
+                    pushView()
+                } else {
+                    stopTest()
+                    depth = 0
                 }
-            } catch {}
+            }
         }
     }
     
@@ -255,17 +253,15 @@ private struct SheetStressTest: View {
         isRunning = true
         sheetCount = 0 // Reset on start
         timerTask = Task { @MainActor in
-            do {
-                while !Task.isCancelled && isRunning {
-                    if sheetCount < maxSheets {
-                        presentSheet()
-                    } else {
-                        // When reached max, stop test
-                        stopTest()
-                        break
-                    }
+            while !Task.isCancelled && isRunning {
+                if sheetCount < maxSheets {
+                    presentSheet()
+                } else {
+                    // When reached max, stop test
+                    stopTest()
+                    break
                 }
-            } catch {}
+            }
         }
     }
     
@@ -393,17 +389,15 @@ private struct FullscreenStressTest: View {
         isRunning = true
         presentationCount = 0 // Reset on start
         timerTask = Task { @MainActor in
-            do {
-                while !Task.isCancelled && isRunning {
-                    if presentationCount < maxPresentations {
-                        presentFullscreen()
-                    } else {
-                        // When reached max, stop test
-                        stopTest()
-                        break
-                    }
+            while !Task.isCancelled && isRunning {
+                if presentationCount < maxPresentations {
+                    presentFullscreen()
+                } else {
+                    // When reached max, stop test
+                    stopTest()
+                    break
                 }
-            } catch {}
+            }
         }
     }
     
@@ -543,19 +537,17 @@ private struct MixedStressTest: View {
         isRunning = true
         operationCount = 0 // Reset counter when starting
         timerTask = Task { @MainActor in
-            do {
-                while !Task.isCancelled && isRunning {
-                    if operationCount < maxOperations {
-                        performRandomOperation()
-                    } else {
-                        // When we reach max operations, reset and stop the test
-                        router.popToRoot()
-                        operationCount = 0
-                        stopTest()
-                        break
-                    }
+            while !Task.isCancelled && isRunning {
+                if operationCount < maxOperations {
+                    performRandomOperation()
+                } else {
+                    // When we reach max operations, reset and stop the test
+                    router.popToRoot()
+                    operationCount = 0
+                    stopTest()
+                    break
                 }
-            } catch {}
+            }
         }
     }
     
@@ -796,22 +788,22 @@ private struct AdvancedNavigationDemo: View {
                     VStack(spacing: 16) {
                         Button("Push → Present → Sheet") {
                             router.push {
-                                NextDemoView(title: "Pushed View", number: 1, 
-                                            nextAction: {
-                                                router.present {
-                                                    PresentationDemoView(title: "Presented After Push", 
-                                                                        presentationType: "Fullscreen",
-                                                                        nextAction: {
-                                                                            router.sheet {
-                                                                                PresentationDemoView(title: "Sheet After Present", 
-                                                                                                    presentationType: "Sheet")
-                                                                                    .environment(routerStack)
-                                                                            }
-                                                                        })
-                                                        .environment(routerStack)
-                                                }
-                                            })
-                                    .environment(routerStack)
+                                NextDemoView(title: "Pushed View", number: 1,
+                                             nextAction: {
+                                    router.present {
+                                        PresentationDemoView(title: "Presented After Push",
+                                                             presentationType: "Fullscreen",
+                                                             nextAction: {
+                                            router.sheet {
+                                                PresentationDemoView(title: "Sheet After Present",
+                                                                     presentationType: "Sheet")
+                                                .environment(routerStack)
+                                            }
+                                        })
+                                        .environment(routerStack)
+                                    }
+                                })
+                                .environment(routerStack)
                             }
                         }
                         .buttonStyle(.borderedProminent)
@@ -949,7 +941,7 @@ private struct PresentationDemoView: View {
             
             Text("Presentation Type: \(presentationType)")
                 .font(.headline)
-                
+            
             VStack(alignment: .leading, spacing: 8) {
                 Text("Navigation Info:")
                     .font(.headline)
@@ -997,9 +989,9 @@ private struct PresentationDemoView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            presentationType == "Sheet" 
-                ? Color.blue.opacity(0.1) 
-                : Color.green.opacity(0.1)
+            presentationType == "Sheet"
+            ? Color.blue.opacity(0.1)
+            : Color.green.opacity(0.1)
         )
     }
-} 
+}

@@ -37,7 +37,7 @@ public struct ViewNavigationWrapper: View {
                 .toolbar(.hidden, for: .navigationBar)
         }
         .fullScreenCover(item: $router.fullScreenDestination, onDismiss: {
-            router.fullScreenDestination = nil
+            router.operateDismiss()
         }) { wrapper in
             ViewNavigationWrapper(parent: router) {
                 wrapper.destination
@@ -46,7 +46,7 @@ public struct ViewNavigationWrapper: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .sheet(item: $router.sheetDestination, onDismiss: {
-            router.sheetDestination = nil
+            router.operateDismiss()
         }) { wrapper in
             ViewNavigationWrapper(parent: router) {
                 wrapper.destination

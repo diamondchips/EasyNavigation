@@ -15,6 +15,9 @@ public class Router: @unchecked Sendable {
     var fullScreenDestination: DestinationWrapper?
     var sheetDestination: DestinationWrapper?
     
+    @ObservationIgnored
+    private var onPresentedDismiss: (() -> Void)?
+    
     // Added for animated root replacement
     var rootViewID: UUID = UUID()
 
@@ -95,7 +98,6 @@ public class Router: @unchecked Sendable {
     private func replaceRootWithAnimation<Content: View>(_ newRootViewGenerator: @escaping () -> Content) {
         let newRootID = UUID()
         let newGenerator = { AnyView(newRootViewGenerator()) }
-        let transition: AnyTransition = .asymmetric(insertion: .move(edge: .trailing), removal: .identity)
 
         withAnimation(.default) {
             self.root = newGenerator
@@ -114,7 +116,6 @@ public class Router: @unchecked Sendable {
             guard let self = self else { return }
             self.path.append(newDestinationWrapper)
         }
-        
         
         do {
             try await Task.sleep(for: .milliseconds(400))
@@ -137,6 +138,14 @@ public class Router: @unchecked Sendable {
                     self.path.remove(at: self.path.count - 2)
                 }
             }
+        }
+    }
+    
+    func operateDismiss() {
+        onPresentedDismiss?()
+        
+        executeOperation { [weak self] in
+            self?.onPresentedDismiss = nil
         }
     }
     
@@ -179,28 +188,41 @@ public class Router: @unchecked Sendable {
     }
     
     // MARK: - Sheets & Covers
-    public func present<Content: View>(@ViewBuilder _ destination: () -> Content) {
-        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+    public func present<Content: View>(@ViewBuilder _ destination: @escaping () -> Content, onDismiss: (() -> Void)? = nil) {
         print("[Router] Present called. Attempting to present: \(type(of: destination()))") // Hangi view'ı present etmeye çalıştığımızı loglayalım.
+        
+        executeOperation { [weak self] in
+            self?.sheetDestination = nil // Ensure only one modal type is active
+        }
         
         executeOperation { [weak self] in
             guard let self = self else {
                 print("[Router] Executing operation for present: Self is nil.")
                 return
             }
+            let wrapper = DestinationWrapper(
+                destination: AnyView(destination())
+            )
+
             print("[Router] Executing operation for present. Current fullScreenDestination: \(String(describing: self.fullScreenDestination))")
-            self.sheetDestination = nil // Ensure only one modal type is active
+            self.onPresentedDismiss = onDismiss
             self.fullScreenDestination = wrapper
             print("[Router] fullScreenDestination set to wrapper with id: \(wrapper.id). View type: \(type(of: wrapper.destination))")
         }
     }
     
-    public func sheet<Content: View>(@ViewBuilder _ destination: @escaping () -> Content) {
-        let wrapper = DestinationWrapper(destination: AnyView(destination()))
+    public func sheet<Content: View>(@ViewBuilder _ destination: @escaping () -> Content, onDismiss: (() -> Void)? = nil) {
+        
+        executeOperation { [weak self] in
+            self?.fullScreenDestination = nil
+        }
         
         executeOperation { [weak self] in
             guard let self = self else { return }
-            fullScreenDestination = nil
+            let wrapper = DestinationWrapper(
+                destination: AnyView(destination())
+            )
+            onPresentedDismiss = onDismiss
             sheetDestination = wrapper
         }
     }
